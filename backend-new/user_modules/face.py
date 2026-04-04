@@ -92,20 +92,33 @@ def dnn_face_recognition(frame: Any, face_db: dict[str, Any]) -> str | None:
 
     Returns
     -------
-    The matched ``face_id`` string, or ``None`` when no face is detected /
-    the face is unknown.
+    The matched ``face_id`` string when the face is in ``face_db``.
+    ``"stranger"`` when a face is detected but not recognised / not in ``face_db``.
+    ``None`` when no face is detected in the frame at all.
     """
     recognizer = _get_active_recognizer()
     prediction = recognizer.predict_frame(frame)
 
-    if prediction.name is None or prediction.name == "Unknown":
+    # No face present in the frame at all — return None so the system ignores
+    # this frame rather than treating it as a stranger detection.
+    if prediction.name is None:
         return None
 
-    if face_service_settings.recognizer_backend.lower() == "arcface":
-        # ArcFace already returns a face_id — validate it exists in the DB
-        return prediction.name if prediction.name in face_db else None
+    # A face was detected but its similarity/confidence is below the threshold —
+    # the person is not in the enrollment store / training set.
+    if prediction.name == "Unknown":
+        return "stranger"
 
-    return _resolve_face_id(prediction.name, face_db)
+    if face_service_settings.recognizer_backend.lower() == "arcface":
+        # ArcFace returns a face_id directly — accept it only if it exists in
+        # the live face_db; otherwise the person is a stranger.
+        return prediction.name if prediction.name in face_db else "stranger"
+
+    # KNN path: map the predicted label back to a face_id via CSV / face_db.
+    # If the resolution fails the recognised person is not in the face_db, so
+    # treat them as a stranger.
+    resolved = _resolve_face_id(prediction.name, face_db)
+    return resolved if resolved is not None else "stranger"
 
 
 # ------------------------------------------------------------------
