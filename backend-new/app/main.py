@@ -244,7 +244,12 @@ async def upload_face(face_id: str = Form(...), metadata_json: str = Form("{}"),
         from user_modules.face import enroll_arcface_from_image_bytes
         enrolled = await asyncio.to_thread(enroll_arcface_from_image_bytes, face_id, raw)
     except Exception:
-        logger.exception("ArcFace auto-enrollment failed for face_id=%s (non-fatal)", face_id)
+        logger.exception(
+            "ArcFace auto-enrollment failed for face_id=%s (face record was saved; "
+            "retry enrollment via POST /face/enroll/%s)",
+            face_id,
+            face_id,
+        )
 
     return {"status": "ok", "record": record.model_dump(mode="json"), "arcface_enrolled": enrolled}
 
@@ -464,6 +469,10 @@ async def face_benchmark() -> dict[str, Any]:
 
         per_face: list[dict[str, Any]] = []
 
+        # Pre-build the face_db_view once (used by KNN name→face_id resolution)
+        from user_modules.face import _resolve_face_id
+        face_db_view = {k: v.model_dump(mode="json") for k, v in face_db_snapshot.items()}
+
         for face_id, record in face_db_snapshot.items():
             if not record.image_path:
                 per_face.append({
@@ -507,8 +516,6 @@ async def face_benchmark() -> dict[str, Any]:
                 pred = knn_rec.predict_frame(frame)
                 latency_ms = (time.perf_counter() - t0) * 1000
 
-                from user_modules.face import _resolve_face_id
-                face_db_view = {k: v.model_dump(mode="json") for k, v in face_db_snapshot.items()}
                 resolved = None
                 if pred.name and pred.name != "Unknown":
                     resolved = _resolve_face_id(pred.name, face_db_view)

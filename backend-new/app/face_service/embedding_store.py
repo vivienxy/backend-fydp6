@@ -120,7 +120,7 @@ class ArcFaceEmbeddingStore:
         q = q / q_norm
 
         best_id: str | None = None
-        best_score: float = -2.0  # below any possible cosine similarity value
+        best_score: float = float("-inf")  # tracks best cosine similarity seen so far
 
         for fid, emb in self._embeddings.items():
             score = float(np.dot(q, emb))  # embeddings pre-normalised on store
