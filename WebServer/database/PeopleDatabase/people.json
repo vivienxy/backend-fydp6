@@ -26,9 +26,9 @@
   {
     "id": 3,
     "headshot": "headshots/3_1773732171.MOV",
-    "image": "images/3_1774861415.jpeg",
+    "image": "images/3_1775457022619.jpg",
     "name": "Vivien",
-    "relationship": "Teammate",
+    "relationship": "self",
     "auditory cue (male)": "auditory cues/3_1773732171_male.wav",
     "auditory cue (female)": "auditory cues/3_1773732171_female.wav",
     "audio_status": "ready",
