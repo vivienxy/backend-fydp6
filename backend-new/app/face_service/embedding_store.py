@@ -53,6 +53,11 @@ class ArcFaceEmbeddingStore:
                         # New format: list of embeddings → split rows into a Python list
                         result[str(k)] = [arr[i] for i in range(arr.shape[0])]
                     else:
+                        logger.warning(
+                            "ArcFaceEmbeddingStore: unexpected embedding shape %s for key %r — flattening",
+                            arr.shape,
+                            k,
+                        )
                         result[str(k)] = [arr.reshape(-1)]
                 return result
         except Exception:
