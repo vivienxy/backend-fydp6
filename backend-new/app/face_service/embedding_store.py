@@ -25,7 +25,7 @@ class ArcFaceEmbeddingStore:
 
     def __init__(self, store_path: Path) -> None:
         self._path = Path(store_path)
-        self._embeddings: dict[str, np.ndarray] = self._load()
+        self._embeddings: dict[str, list[np.ndarray]] = self._load() ## changed to list
         logger.info(
             "ArcFaceEmbeddingStore: loaded %d embedding(s) from %s",
             len(self._embeddings),
@@ -70,7 +70,13 @@ class ArcFaceEmbeddingStore:
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec = vec / norm
-        self._embeddings[str(face_id)] = vec
+
+        face_id = str(face_id)
+
+        if face_id not in self._embeddings:
+            self._embeddings[str(face_id)] = []
+
+        self._embeddings[str(face_id)].append(vec)
         self._save()
 
     def remove(self, face_id: str) -> bool:
@@ -122,11 +128,12 @@ class ArcFaceEmbeddingStore:
         best_id: str | None = None
         best_score: float = float("-inf")  # tracks best cosine similarity seen so far
 
-        for fid, emb in self._embeddings.items():
-            score = float(np.dot(q, emb))  # embeddings pre-normalised on store
-            if score > best_score:
-                best_score = score
-                best_id = fid
+        for fid, emb_list in self._embeddings.items():
+            for emb in emb_list:
+                score = float(np.dot(q, emb))
+                if score > best_score:
+                    best_score = score
+                    best_id = fid
 
         if best_score < threshold:
             return None, best_score
