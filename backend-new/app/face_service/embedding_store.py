@@ -36,14 +36,25 @@ class ArcFaceEmbeddingStore:
     # Persistence
     # ------------------------------------------------------------------
 
-    def _load(self) -> dict[str, np.ndarray]:
+    def _load(self) -> dict[str, list[np.ndarray]]:
         if not self._path.exists():
             return {}
         try:
             with self._path.open("rb") as fh:
                 data = pickle.load(fh)
             if isinstance(data, dict):
-                return {str(k): np.asarray(v, dtype=np.float32) for k, v in data.items()}
+                result: dict[str, list[np.ndarray]] = {}
+                for k, v in data.items():
+                    arr = np.asarray(v, dtype=np.float32)
+                    if arr.ndim == 1:
+                        # Legacy format: single embedding per face_id
+                        result[str(k)] = [arr]
+                    elif arr.ndim == 2:
+                        # New format: list of embeddings → split rows into a Python list
+                        result[str(k)] = [arr[i] for i in range(arr.shape[0])]
+                    else:
+                        result[str(k)] = [arr.reshape(-1)]
+                return result
         except Exception:
             logger.exception(
                 "ArcFaceEmbeddingStore: failed to load from %s — starting with empty store",
